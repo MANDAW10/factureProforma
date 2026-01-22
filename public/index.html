@@ -209,6 +209,7 @@
             <td><span class="badge-draft">Brouillon</span></td>
             <td class="text-end">
                 <button class="btn-action btn-view" onclick="openPdf(${inv.id})">👁️ Voir</button>
+                                <button class="btn-action btn-download" onclick="downloadPdf(${inv.id}, '${inv.invoice_number}')">⬇️ Télécharger</button>
                 <button class="btn-action btn-delete" onclick="deleteInvoice(${inv.id}, '${inv.invoice_number}')">🗑️ Supprimer</button>
             </td>
           </tr>
