@@ -1,6 +1,6 @@
 const db = require("../config/db");
 
-// ✅ GET ALL CLIENTS
+// ✅ Recuperer TOUS LES CLIENTS
 exports.getAll = async (req, res) => {
   try {
     const [rows] = await db.query("SELECT * FROM clients ORDER BY name ASC");
