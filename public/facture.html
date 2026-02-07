@@ -402,332 +402,280 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
   <script>
-    /* ==========================================================
-       ✅ AUTH SESSION
-    ========================================================== */
-    function getToken() {
-      return sessionStorage.getItem("token");
-    }
+/* ==========================================================
+   ✅ AUTH SESSION
+========================================================== */
+function getToken() {
+  return sessionStorage.getItem("token");
+}
 
-    function forceLogout() {
-      sessionStorage.removeItem("token");
-      window.location.href = "login.html";
-    }
+function forceLogout() {
+  sessionStorage.removeItem("token");
+  window.location.href = "login.html";
+}
 
-    if (!getToken()) {
-      window.location.href = "login.html";
-    }
+if (!getToken()) {
+  window.location.href = "login.html";
+}
 
-    document.getElementById("logoutBtn").addEventListener("click", forceLogout);
+document.getElementById("logoutBtn").addEventListener("click", forceLogout);
 
-    /* ==========================================================
-       ✅ PDF (VIEW / DOWNLOAD / PRINT) via fetch + blob
-    ========================================================== */
-    async function fetchPdfBlob(invoiceId) {
-      const res = await fetch(`/api/invoices/${invoiceId}/pdf`, {
-        headers: { Authorization: "Bearer " + getToken() }
-      });
 
-      if (res.status === 401) {
-        forceLogout();
-        return null;
-      }
+/* ==========================================================
+   ✅ PDF (VIEW / DOWNLOAD / PRINT)
+========================================================== */
+async function fetchPdfBlob(invoiceId) {
+  const res = await fetch(`/api/invoices/${invoiceId}/pdf`, {
+    headers: { Authorization: "Bearer " + getToken() }
+  });
 
-      if (!res.ok) {
-        alert("❌ Erreur PDF");
-        return null;
-      }
+  if (res.status === 401) {
+    forceLogout();
+    return null;
+  }
 
-      return await res.blob();
-    }
+  if (!res.ok) {
+    alert("❌ Erreur PDF");
+    return null;
+  }
 
-    async function openPdf(invoiceId) {
-      const blob = await fetchPdfBlob(invoiceId);
-      if (!blob) return;
-      const url = URL.createObjectURL(blob);
-      window.open(url, "_blank");
-    }
+  return await res.blob();
+}
 
-    async function downloadPdf(invoiceId, invoiceNumber) {
-      const blob = await fetchPdfBlob(invoiceId);
-      if (!blob) return;
+async function openPdf(invoiceId) {
+  const blob = await fetchPdfBlob(invoiceId);
+  if (!blob) return;
+  const url = URL.createObjectURL(blob);
+  window.open(url, "_blank");
+}
 
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${invoiceNumber}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-    }
+async function downloadPdf(invoiceId, invoiceNumber) {
+  const blob = await fetchPdfBlob(invoiceId);
+  if (!blob) return;
 
-    async function printPdf(invoiceId) {
-      const blob = await fetchPdfBlob(invoiceId);
-      if (!blob) return;
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${invoiceNumber}.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
 
-      const url = URL.createObjectURL(blob);
-      const w = window.open(url, "_blank");
-      w.onload = () => {
-        w.focus();
-        w.print();
-      };
-    }
+async function printPdf(invoiceId) {
+  const blob = await fetchPdfBlob(invoiceId);
+  if (!blob) return;
 
-    /* ==========================================================
-       ✅ ITEMS / TOTALS
-    ========================================================== */
-    const itemsContainer = document.getElementById("itemsContainer");
+  const url = URL.createObjectURL(blob);
+  const w = window.open(url, "_blank");
+  w.onload = () => {
+    w.focus();
+    w.print();
+  };
+}
 
-    function formatFCFA(n){
-      return Number(n || 0).toLocaleString("fr-FR") + " FCFA";
-    }
 
-    function calcTotals(){
-      let subtotal = 0;
+/* ==========================================================
+   ✅ ITEMS / TOTALS
+========================================================== */
+const itemsContainer = document.getElementById("itemsContainer");
 
-      document.querySelectorAll("#itemsContainer .item-row").forEach(row => {
-        const qty = Number(row.querySelector(".qty").value || 0);
-        const price = Number(row.querySelector(".price").value || 0);
-        subtotal += qty * price;
-      });
+function formatFCFA(n){
+  return Number(n || 0).toLocaleString("fr-FR") + " FCFA";
+}
 
-      const rate = Number(document.getElementById("tvaRate").value || 0);
-      document.getElementById("tvaLabel").textContent = rate;
+function calcTotals(){
+  let subtotal = 0;
 
-      const tva = subtotal * (rate / 100);
-      const total = subtotal + tva;
+  document.querySelectorAll("#itemsContainer .item-row").forEach(row => {
+    const qty = Number(row.querySelector(".qty").value || 0);
+    const price = Number(row.querySelector(".price").value || 0);
+    subtotal += qty * price;
+  });
 
-      document.getElementById("subtotalText").textContent = formatFCFA(subtotal);
-      document.getElementById("tvaText").textContent = formatFCFA(tva);
-      document.getElementById("totalText").textContent = formatFCFA(total);
-    }
+  const rate = Number(document.getElementById("tvaRate").value || 0);
+  document.getElementById("tvaLabel").textContent = rate;
 
-    function createItemRow(){
-      const row = document.createElement("div");
-      row.className = "row g-3 align-items-center item-row";
+  const tva = subtotal * (rate / 100);
+  const total = subtotal + tva;
 
-      row.innerHTML = `
-        <div class="col-lg-4">
-          <input type="text" class="form-control desc" placeholder="Ex: Briques" />
-        </div>
-        <div class="col-lg-2">
-          <input type="number" class="form-control qty" value="1" min="0" />
-        </div>
-        <div class="col-lg-2">
-          <input type="number" class="form-control price" value="0" min="0" />
-        </div>
-        <div class="col-lg-2">
-          <input type="text" class="form-control unit" value="FCFA" />
-        </div>
-        <div class="col-lg-1">
-          <div class="fw-bold totalLine">0</div>
-        </div>
-        <div class="col-lg-1 text-end">
-          <button class="btn-del" type="button">X</button>
-        </div>
-      `;
+  document.getElementById("subtotalText").textContent = formatFCFA(subtotal);
+  document.getElementById("tvaText").textContent = formatFCFA(tva);
+  document.getElementById("totalText").textContent = formatFCFA(total);
+}
 
-      const qty = row.querySelector(".qty");
-      const price = row.querySelector(".price");
-      const del = row.querySelector(".btn-del");
+function createItemRow(){
+  const row = document.createElement("div");
+  row.className = "row g-3 align-items-center item-row";
 
-      function recalc(){
-        const line = Number(qty.value || 0) * Number(price.value || 0);
-        row.querySelector(".totalLine").textContent = line.toLocaleString("fr-FR");
-        calcTotals();
-      }
+  row.innerHTML = `
+    <div class="col-lg-4">
+      <input type="text" class="form-control desc" placeholder="Ex: Briques" />
+    </div>
+    <div class="col-lg-2">
+      <input type="number" class="form-control qty" value="1" min="0" />
+    </div>
+    <div class="col-lg-2">
+      <input type="number" class="form-control price" value="0" min="0" />
+    </div>
+    <div class="col-lg-2">
+      <input type="text" class="form-control unit" value="FCFA" />
+    </div>
+    <div class="col-lg-1">
+      <div class="fw-bold totalLine">0</div>
+    </div>
+    <div class="col-lg-1 text-end">
+      <button class="btn-del" type="button">X</button>
+    </div>
+  `;
 
-      qty.addEventListener("input", recalc);
-      price.addEventListener("input", recalc);
+  const qty = row.querySelector(".qty");
+  const price = row.querySelector(".price");
+  const del = row.querySelector(".btn-del");
 
-      del.addEventListener("click", () => {
-        row.remove();
-        calcTotals();
-      });
-
-      recalc();
-      return row;
-    }
-
-    document.getElementById("addItemBtn").addEventListener("click", () => {
-      itemsContainer.appendChild(createItemRow());
-      calcTotals();
-    });
-
-    document.getElementById("tvaRate").addEventListener("input", calcTotals);
-
-    function setDefaultDates(){
-      const today = new Date().toISOString().slice(0,10);
-      document.getElementById("issueDate").value = today;
-    }
-
-    /* ==========================================================
-       ✅ CLIENTS API
-    ========================================================== */
-    async function loadClientsFromAPI(selectedId = null){
-      const select = document.getElementById("clientSelect");
-      select.innerHTML = `<option value="">Sélectionner un client</option>`;
-
-      try {
-        const res = await fetch("/api/clients", {
-          headers: { Authorization: "Bearer " + getToken() }
-        });
-
-        if (res.status === 401) return forceLogout();
-
-        const data = await res.json();
-
-        if (!res.ok) {
-          alert(data.error || "Erreur chargement clients");
-          return;
-        }
-
-        data.forEach(c => {
-          const opt = document.createElement("option");
-          opt.value = c.id;
-          opt.textContent = c.name;
-          select.appendChild(opt);
-        });
-
-        if (selectedId) select.value = selectedId;
-
-      } catch (err) {
-        console.error(err);
-        select.innerHTML = `<option value="">❌ Impossible de charger les clients</option>`;
-      }
-    }
-
-    /* ==========================================================
-       ✅ MODAL AJOUT CLIENT
-    ========================================================== */
-    document.getElementById("openClientModalBtn").addEventListener("click", () => {
-      const modal = new bootstrap.Modal(document.getElementById("clientModal"));
-
-      document.getElementById("clientModalMsg").innerHTML = "";
-      document.getElementById("newClientName").value = "";
-      document.getElementById("newClientPhone").value = "";
-      document.getElementById("newClientEmail").value = "";
-      document.getElementById("newClientAddress").value = "";
-
-      modal.show();
-    });
-
-    document.getElementById("saveClientBtn").addEventListener("click", async () => {
-      const name = document.getElementById("newClientName").value.trim();
-      const phone = document.getElementById("newClientPhone").value.trim();
-      const email = document.getElementById("newClientEmail").value.trim();
-      const address = document.getElementById("newClientAddress").value.trim();
-
-      if (!name) {
-        document.getElementById("clientModalMsg").innerHTML =
-          `<div class="alert alert-danger mt-2">❌ Le nom est obligatoire</div>`;
-        return;
-      }
-
-      try {
-        const res = await fetch("/api/clients", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: "Bearer " + getToken()
-          },
-          body: JSON.stringify({ name, phone, email, address })
-        });
-
-        if (res.status === 401) return forceLogout();
-
-        const json = await res.json();
-
-        if (!res.ok){
-          document.getElementById("clientModalMsg").innerHTML =
-            `<div class="alert alert-danger mt-2">❌ ${json.error || "Erreur ajout client"}</div>`;
-          return;
-        }
-
-        document.getElementById("clientModalMsg").innerHTML =
-          `<div class="alert alert-success mt-2">✅ Client ajouté</div>`;
-
-        await loadClientsFromAPI();
-
-        setTimeout(() => {
-          bootstrap.Modal.getInstance(document.getElementById("clientModal")).hide();
-        }, 700);
-
-      } catch (err) {
-        console.error(err);
-        document.getElementById("clientModalMsg").innerHTML =
-          `<div class="alert alert-danger mt-2">❌ Erreur serveur</div>`;
-      }
-    });
-
-    /* ==========================================================
-       ✅ CREATE INVOICE
-    ========================================================== */
-    document.getElementById("createBtn").addEventListener("click", async () => {
-      const client_id = document.getElementById("clientSelect").value;
-      const issue_date = document.getElementById("issueDate").value;
-      const due_date = document.getElementById("dueDate").value;
-      const notes = document.getElementById("notes").value;
-      const tva_rate = document.getElementById("tvaRate").value;
-
-      const items = [];
-      document.querySelectorAll("#itemsContainer .item-row").forEach(row => {
-        items.push({
-          description: row.querySelector(".desc").value,
-          quantity: row.querySelector(".qty").value,
-          unit_price: row.querySelector(".price").value,
-          unit: row.querySelector(".unit").value
-        });
-      });
-
-      if (!client_id) return alert("Veuillez sélectionner un client.");
-      if (!issue_date) return alert("Veuillez choisir la date d'émission.");
-      if (!items.length) return alert("Ajoutez au moins un article.");
-
-      try {
-        const res = await fetch("/api/invoices", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: "Bearer " + getToken()
-          },
-          body: JSON.stringify({ client_id, issue_date, due_date, notes, tva_rate, items })
-        });
-
-        if (res.status === 401) return forceLogout();
-
-        const json = await res.json();
-
-        if (!res.ok){
-          alert(json.error || "Erreur création facture");
-          return;
-        }
-
-        // ✅ RESULT WITH WORKING BUTTONS
-        document.getElementById("result").innerHTML = `
-          <div class="alert alert-success">
-            ✅ Facture créée : <b>${json.invoiceNumber}</b>
-            <div class="result-actions">
-              <button class="btn btn-outline-dark" onclick="openPdf(${json.invoiceId})">👁️ Voir PDF</button>
-              <button class="btn btn-primary" onclick="downloadPdf(${json.invoiceId}, '${json.invoiceNumber}')">⬇️ Télécharger</button>
-              <button class="btn btn-success" onclick="printPdf(${json.invoiceId})">🖨️ Imprimer</button>
-            </div>
-          </div>
-        `;
-      } catch (err) {
-        console.error(err);
-        alert("Erreur serveur / API");
-      }
-    });
-
-    /* ==========================================================
-       ✅ INIT
-    ========================================================== */
-    loadClientsFromAPI();
-    setDefaultDates();
-    itemsContainer.appendChild(createItemRow());
+  function recalc(){
+    const line = Number(qty.value || 0) * Number(price.value || 0);
+    row.querySelector(".totalLine").textContent = line.toLocaleString("fr-FR");
     calcTotals();
-  </script>
+  }
+
+  qty.addEventListener("input", recalc);
+  price.addEventListener("input", recalc);
+
+  del.addEventListener("click", () => {
+    row.remove();
+    calcTotals();
+  });
+
+  recalc();
+  return row;
+}
+
+document.getElementById("addItemBtn").addEventListener("click", () => {
+  itemsContainer.appendChild(createItemRow());
+  calcTotals();
+});
+
+document.getElementById("tvaRate").addEventListener("input", calcTotals);
+
+function setDefaultDates(){
+  const today = new Date().toISOString().slice(0,10);
+  document.getElementById("issueDate").value = today;
+}
+
+
+/* ==========================================================
+   ✅ CLIENTS API
+========================================================== */
+async function loadClientsFromAPI(selectedId = null){
+  const select = document.getElementById("clientSelect");
+  select.innerHTML = `<option value="">Sélectionner un client</option>`;
+
+  try {
+    const res = await fetch("/api/clients", {
+      headers: { Authorization: "Bearer " + getToken() }
+    });
+
+    if (res.status === 401) return forceLogout();
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      alert(data.error || "Erreur chargement clients");
+      return;
+    }
+
+    data.forEach(c => {
+      const opt = document.createElement("option");
+      opt.value = c.id;
+      opt.textContent = c.name;
+      select.appendChild(opt);
+    });
+
+    if (selectedId) select.value = selectedId;
+
+  } catch (err) {
+    console.error(err);
+    select.innerHTML = `<option value="">❌ Impossible de charger les clients</option>`;
+  }
+}
+
+
+/* ==========================================================
+   ✅ CREATE INVOICE
+========================================================== */
+document.getElementById("createBtn").addEventListener("click", async () => {
+
+  const client_id = document.getElementById("clientSelect").value;
+  const issue_date = document.getElementById("issueDate").value;
+
+  // ✅ CORRECTION ICI (sécurisation)
+  const dueInput = document.getElementById("dueDate");
+  const due_date = dueInput ? dueInput.value : null;
+
+  const notes = document.getElementById("notes").value;
+  const tva_rate = document.getElementById("tvaRate").value;
+
+  const items = [];
+  document.querySelectorAll("#itemsContainer .item-row").forEach(row => {
+    items.push({
+      description: row.querySelector(".desc").value,
+      quantity: row.querySelector(".qty").value,
+      unit_price: row.querySelector(".price").value,
+      unit: row.querySelector(".unit").value
+    });
+  });
+
+  if (!client_id) return alert("Veuillez sélectionner un client.");
+  if (!issue_date) return alert("Veuillez choisir la date d'émission.");
+  if (!items.length) return alert("Ajoutez au moins un article.");
+
+  try {
+    const res = await fetch("/api/invoices", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + getToken()
+      },
+      body: JSON.stringify({ client_id, issue_date, due_date, notes, tva_rate, items })
+    });
+
+    if (res.status === 401) return forceLogout();
+
+    const json = await res.json();
+
+    if (!res.ok){
+      alert(json.error || "Erreur création facture");
+      return;
+    }
+
+    document.getElementById("result").innerHTML = `
+      <div class="alert alert-success">
+        ✅ Facture créée : <b>${json.invoiceNumber}</b>
+        <div class="result-actions">
+          <button class="btn btn-outline-dark" onclick="openPdf(${json.invoiceId})">👁️ Voir PDF</button>
+          <button class="btn btn-primary" onclick="downloadPdf(${json.invoiceId}, '${json.invoiceNumber}')">⬇️ Télécharger</button>
+          <button class="btn btn-success" onclick="printPdf(${json.invoiceId})">🖨️ Imprimer</button>
+        </div>
+      </div>
+    `;
+  } catch (err) {
+    console.error(err);
+    alert("Erreur serveur / API");
+  }
+});
+
+
+/* ==========================================================
+   ✅ INIT
+========================================================== */
+loadClientsFromAPI();
+setDefaultDates();
+itemsContainer.appendChild(createItemRow());
+calcTotals();
+
+</script>
+
 
 </body>
 </html>
