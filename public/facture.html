@@ -401,7 +401,8 @@
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
-  <script>
+ <script>
+
 /* ==========================================================
    ✅ AUTH SESSION
 ========================================================== */
@@ -429,10 +430,7 @@ async function fetchPdfBlob(invoiceId) {
     headers: { Authorization: "Bearer " + getToken() }
   });
 
-  if (res.status === 401) {
-    forceLogout();
-    return null;
-  }
+  if (res.status === 401) return forceLogout();
 
   if (!res.ok) {
     alert("❌ Erreur PDF");
@@ -602,6 +600,70 @@ async function loadClientsFromAPI(selectedId = null){
 
 
 /* ==========================================================
+   ✅ MODAL AJOUT CLIENT
+========================================================== */
+document.getElementById("openClientModalBtn").addEventListener("click", () => {
+  const modal = new bootstrap.Modal(document.getElementById("clientModal"));
+
+  document.getElementById("clientModalMsg").innerHTML = "";
+  document.getElementById("newClientName").value = "";
+  document.getElementById("newClientPhone").value = "";
+  document.getElementById("newClientEmail").value = "";
+  document.getElementById("newClientAddress").value = "";
+
+  modal.show();
+});
+
+document.getElementById("saveClientBtn").addEventListener("click", async () => {
+  const name = document.getElementById("newClientName").value.trim();
+  const phone = document.getElementById("newClientPhone").value.trim();
+  const email = document.getElementById("newClientEmail").value.trim();
+  const address = document.getElementById("newClientAddress").value.trim();
+
+  if (!name) {
+    document.getElementById("clientModalMsg").innerHTML =
+      `<div class="alert alert-danger mt-2">❌ Le nom est obligatoire</div>`;
+    return;
+  }
+
+  try {
+    const res = await fetch("/api/clients", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + getToken()
+      },
+      body: JSON.stringify({ name, phone, email, address })
+    });
+
+    if (res.status === 401) return forceLogout();
+
+    const json = await res.json();
+
+    if (!res.ok){
+      document.getElementById("clientModalMsg").innerHTML =
+        `<div class="alert alert-danger mt-2">❌ ${json.error || "Erreur ajout client"}</div>`;
+      return;
+    }
+
+    document.getElementById("clientModalMsg").innerHTML =
+      `<div class="alert alert-success mt-2">✅ Client ajouté</div>`;
+
+    await loadClientsFromAPI(json.id);
+
+    setTimeout(() => {
+      bootstrap.Modal.getInstance(document.getElementById("clientModal")).hide();
+    }, 700);
+
+  } catch (err) {
+    console.error(err);
+    document.getElementById("clientModalMsg").innerHTML =
+      `<div class="alert alert-danger mt-2">❌ Erreur serveur</div>`;
+  }
+});
+
+
+/* ==========================================================
    ✅ CREATE INVOICE
 ========================================================== */
 document.getElementById("createBtn").addEventListener("click", async () => {
@@ -609,7 +671,6 @@ document.getElementById("createBtn").addEventListener("click", async () => {
   const client_id = document.getElementById("clientSelect").value;
   const issue_date = document.getElementById("issueDate").value;
 
-  // ✅ CORRECTION ICI (sécurisation)
   const dueInput = document.getElementById("dueDate");
   const due_date = dueInput ? dueInput.value : null;
 
@@ -675,6 +736,7 @@ itemsContainer.appendChild(createItemRow());
 calcTotals();
 
 </script>
+
 
 
 </body>
